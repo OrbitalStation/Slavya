@@ -31,4 +31,5 @@ zCombinator = f -> w (u -> f (n -> w u n))
 
 factorial = zCombinator (factorial -> n -> (if (less n 2) (i -> 1) (i -> mul n (factorial (pred n)))) id)
 
+* A comment!
 main = factorial 5

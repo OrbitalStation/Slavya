@@ -4,7 +4,7 @@ from os import system
 import src.data_types as dt
 
 
-def ccompile(statements: list[dt.Statement], extra_code: str):
+def ccompile(statements, extra_code: str):
     """
     Compile Slavya data structures to Rust
     """

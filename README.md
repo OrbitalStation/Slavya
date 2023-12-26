@@ -28,6 +28,8 @@ The following program defines "zero" and a way to increment it
     in Church numerals. `main` returns 3.
 ```
 * code.slavya
+* ^^^^^^^^^^^ A comment btw
+* It starts with an asterisk(`*`) and goes till the end of line
 0 = f -> x -> x
 succ = n -> f -> x -> f (n f x)
 

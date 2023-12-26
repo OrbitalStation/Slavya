@@ -8,8 +8,8 @@ from src.data_types import *
 from src import utils
 
 
-@utils.mixin("evaluate", lambda self: reduce(lambda acc, v: acc | {v.name: evaluate(v.body)}, self._statements, {}))
-@utils.mixin("compile", lambda self, extra_code: ccompile(self._statements, extra_code))
+@utils.mixin("evaluate", lambda self: reduce(lambda a, v: a | {v.name: evaluate(v.body)}, self.without_comments(), {}))
+@utils.mixin("compile", lambda self, extra_code: ccompile(self.without_comments(), extra_code))
 class Chopper:
     def __init__(self, file_name: str):
         self._file = realpath(file_name)
@@ -17,28 +17,38 @@ class Chopper:
         self._string = ""
         self._full_string = ""
         self._column = 0
-        self._statements = []
+        self._statements_or_comments = []
 
     def iterate(self, lines):
         for line in lines:
             self.set(line)
             if line == "":
                 continue
-            self.statement()
+            self.statement_or_comment()
 
     def dump(self):
-        print(*self._statements, sep="\n")
+        print(*self._statements_or_comments, sep="\n")
 
     def set(self, string: str):
         self._line += 1
         self._string = self._full_string = string
         self._column = 0
 
-    def statement(self):
+    def statement_or_comment(self):
+        if (c := self.comment()) is not None:
+            self._statements_or_comments.append(c)
+            return
         name = utils.or_else(self.identifier(), lambda: self.err("Expected an identifier"))
         _ = utils.or_else(self.token("="), lambda: self.err("Expected a token `=`"))
         body = self.expr()
-        self._statements.append(Statement(name, body))
+        self._statements_or_comments.append(Statement(name, body))
+
+    def without_comments(self):
+        return filter(lambda soc: not isinstance(soc, Comment), self._statements_or_comments)
+
+    def comment(self) -> Optional[Comment]:
+        if self.token("*") is not None:
+            return Comment(self._string)
 
     def identifier(self) -> Optional[str]:
         last_alnum = utils.find(utils.inverse_predicate(str.isalnum), self._string)
@@ -68,8 +78,8 @@ class Chopper:
                     args_for_call.append(AXIOMS[axiom])
                 elif (idx := utils.find(lambda e: e.name == x, abstractions_arguments)) != -1:
                     args_for_call.append(abstractions_arguments[idx])
-                elif (idx := utils.find(lambda e: e.name == x, self._statements)) != -1:
-                    args_for_call.append(self._statements[idx])
+                elif (idx := utils.find(lambda e: e.name == x, self._statements_or_comments)) != -1:
+                    args_for_call.append(self._statements_or_comments[idx])
                 else:
                     self.err(f"Unknown identifier: `{x}`")
             elif (x := self.surrounded("(", ")")) is not None:

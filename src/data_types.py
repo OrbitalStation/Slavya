@@ -36,3 +36,8 @@ AXIOMS = {
 class Statement:
     name: str
     body: Expr
+
+
+@dataclass
+class Comment:
+    source: str
