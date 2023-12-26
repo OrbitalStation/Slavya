@@ -1,0 +1,38 @@
+from typing import Any
+from enum import IntEnum
+from dataclasses import dataclass
+
+
+Expr = Any
+
+
+@dataclass
+class Argument:
+    name: str
+
+
+@dataclass
+class Abstraction:
+    argument: Argument
+    body: Expr
+
+
+@dataclass
+class Application:
+    function: Expr
+    argument: Expr
+
+
+class Axiom(IntEnum):
+    ANY = 0
+
+
+AXIOMS = {
+    "A": Axiom.ANY
+}
+
+
+@dataclass
+class Statement:
+    name: str
+    body: Expr

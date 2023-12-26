@@ -1,0 +1,34 @@
+id = x -> x
+w = x -> x x
+
+true  = x -> y -> x
+false = x -> y -> y
+if = cond -> then -> else -> cond then else
+
+not = x -> x false true
+and = x -> y -> x y x
+or  = x -> y -> x x y
+
+0 = f -> x -> x
+
+succ = n -> f -> x -> f (n f x)
+add = x -> y -> x succ y
+mul = x -> y -> x (add y) 0
+
+pred = n -> f -> x -> n (g -> h -> h (g f)) (u -> x) id
+sub = x -> y -> y pred x
+
+is0 = n -> n (x -> false) true
+
+lessOrEq = x -> y -> is0 (sub x y)
+less     = x -> y -> not (lessOrEq y x)
+
+1 = succ 0
+2 = succ 1
+5 = succ (add 2 2)
+
+zCombinator = f -> w (u -> f (n -> w u n))
+
+factorial = zCombinator (factorial -> n -> (if (less n 2) (i -> 1) (i -> mul n (factorial (pred n)))) id)
+
+main = factorial 5

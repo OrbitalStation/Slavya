@@ -1,0 +1,14 @@
+# Compiled files except the base one
+compiled/*
+!compiled/heart.rs
+
+# IDE folders
+.idea
+.vscode
+
+# Python specifics
+venv
+__pycache__
+
+# Wannabe-language; not intented to be shown
+exampleCode.slavya
