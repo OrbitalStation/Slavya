@@ -4,6 +4,8 @@
 This project is nowhere near its end, thus it's very likely
     to dramatically change in the future.
 
+It also currently only works on *nix OS(Linux, etc.).
+
 ## What's that?
 "Slavya" is a new programming language heavily based on lambda calculus,
     it is in fact my petite attempt at implementing this beautiful concept
@@ -14,9 +16,12 @@ This language's name is "Slavya" and this repo is its compiler.
 (I'm too lazy rn to write this README, so bare minimum.)
 
 ## How to use?
-Right now you can write your Slavya code to a file(e.g. `code.slavya`)
+Right now you can write your Slavya code to a file(e.g. `code.🌲`)
     and means to show it on the screen as the argument to `chop.compile(...)`
     function call in the `main` function in the `src/main.py` file.
+Then you should run `main.py` with python3 interpreter.
+
+Currently, uses `.🌲` file extension(`.slavya` is also being considered).
 
 ## Examples:
 The following program defines "zero" and a way to increment it
@@ -44,3 +49,6 @@ It transforms Slavya's Church 3 into a Rust one and displays it.
 
 The examples given in the `code.slavya` at the moment of the commit is implements
 calculation of the factorial of 5, purely in Slavya.
+
+## License
+Licensed under Apache-2.0 conditions(check out `LICENSE.md`)
