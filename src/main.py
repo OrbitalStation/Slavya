@@ -12,14 +12,11 @@ def main(code_file: str):
 
     chop.compile("""
 static mut COUNTER: usize = 0;
-fn inc() -> F {
-    F::zst(|x, _| {
+fn main() {
+    f_main.call(F::zst(|x, _| {
         unsafe { COUNTER += 1 }
         x
-    })
-}
-fn main() {
-    f_main.call(inc()).call(f_id);
+    })).call(f_id);
     unsafe { println!("{COUNTER}") }
 }
     """)
