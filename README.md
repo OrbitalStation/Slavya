@@ -26,6 +26,8 @@ Currently, uses `.🌲` file extension(`.slavya` is also being considered).
 ## Examples:
 The following program defines "zero" and a way to increment it
     in Church numerals. `main` returns 3.
+
+NOTE: it will not run right now, because I'm in process of introducing types to the language.
 ```
 * code.slavya
 * ^^^^^^^^^^^ A comment btw
