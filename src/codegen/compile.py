@@ -4,7 +4,7 @@ from os import system
 import src.data_types as dt
 
 
-def ccompile(statements, extra_code: str):
+def ccompile(statements: list[dt.Statement], extra_code: str):
     """
     Compile Slavya data structures to Rust
     """
@@ -39,7 +39,7 @@ def _stmt(stmt: dt.Statement) -> str:
     return f"const {modify_static(stmt.name)}: F = {body};"
 
 
-def _expr(expr, arguments, no_clone_required=False) -> str:
+def _expr(expr: dt.Expr, arguments: tuple[str, ...], no_clone_required: bool = False) -> str:
     match type(expr):
         case dt.Argument:
             modified = modify_arg(expr.name)
@@ -57,7 +57,7 @@ def _expr(expr, arguments, no_clone_required=False) -> str:
                 return f"F::zst(|{arg_name}, _| {body})"
             else:
                 # Get arguments' indexes in bound's order
-                filtered = list(filter(utils.unzip(lambda _, name: name in bound), enumerate(arguments)))
+                filtered = tuple(filter(utils.unzip(lambda _, name: name in bound), enumerate(arguments)))
                 data = ", ".join(map(_expr_index(filtered, arguments[-1]), bound))
                 return f"F::new(|{arg_name}, data| {body}, ({data},))"
         case dt.Application:
@@ -68,8 +68,8 @@ def _expr(expr, arguments, no_clone_required=False) -> str:
             return modify_static(expr.name)
 
 
-def _expr_index(filtered, previous_abstraction_argument_name):
-    def inner(bound_name):
+def _expr_index(filtered: tuple[tuple[int, str], ...], previous_abstraction_argument_name: str):
+    def inner(bound_name: str) -> str:
         if bound_name == previous_abstraction_argument_name:
             return f"{previous_abstraction_argument_name}.clone()"
         else:

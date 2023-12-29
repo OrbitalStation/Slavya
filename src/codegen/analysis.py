@@ -1,7 +1,7 @@
 import src.data_types as dt
 
 
-def get_bound_arguments(expr, arguments):
+def get_bound_arguments(expr: dt.Expr, arguments: tuple[str, ...]):
     from src.codegen.compile import modify_arg
 
     match type(expr):
@@ -17,7 +17,7 @@ def get_bound_arguments(expr, arguments):
             return ()
 
 
-def _add_uniquely(a, b):
+def _add_uniquely[T](a: tuple[T, ...], b: tuple[T, ...]):
     a = list(a)
     for item in b:
         if item not in a:

@@ -14,13 +14,12 @@ class Chopper:
         self._column = 0
         self._statements_or_comments = []
 
-    def iterate(self, lines) -> list[Statement]:
+    def iterate(self, lines):
         for line in lines:
             self.set(line)
             if line == "":
                 continue
             self.statement_or_comment()
-        return self._statements_or_comments
 
     def dump(self):
         print(*self._statements_or_comments, sep="\n")
@@ -29,6 +28,9 @@ class Chopper:
         self._line += 1
         self._string = self._full_string = string
         self._column = 0
+
+    def without_comments(self):
+        return list(filter(lambda s: not isinstance(s, Comment), self._statements_or_comments))
 
     def statement_or_comment(self):
         if (c := self.comment()) is not None:
@@ -71,7 +73,8 @@ class Chopper:
                     args_for_call.append(AXIOMS[axiom])
                 elif (idx := utils.find(lambda e: e.name == x, abstractions_arguments)) != -1:
                     args_for_call.append(abstractions_arguments[idx])
-                elif (idx := utils.find(lambda e: e.name == x, self._statements_or_comments)) != -1:
+                elif (idx := utils.find(lambda e: isinstance(e, Statement) and e.name == x,
+                                        self._statements_or_comments)) != -1:
                     args_for_call.append(self._statements_or_comments[idx])
                 else:
                     self.err(f"Unknown identifier: `{x}`")
