@@ -34,7 +34,7 @@ def modify_static(name: str) -> str:
 def _stmt(stmt: dt.Statement) -> str:
     body = _expr(stmt.body, ())
     # Cannot make calling const in Rust
-    if type(stmt.body) is dt.Application:
+    if isinstance(stmt.body, dt.Application):
         body = f"F::gen(|| {body})"
     return f"const {modify_static(stmt.name)}: F = {body};"
 

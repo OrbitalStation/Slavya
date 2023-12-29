@@ -1,4 +1,5 @@
 from src.chop import Chopper
+from src.codegen.compile import ccompile
 
 
 def read_file(filename: str):
@@ -8,15 +9,15 @@ def read_file(filename: str):
 
 def main(code_file: str):
     chop = Chopper(code_file)
-    chop.iterate(read_file(code_file))
+    statements = chop.iterate(read_file(code_file))
 
-    chop.compile("""
+    ccompile(statements, """
 static mut COUNTER: usize = 0;
 fn main() {
     f_main.call(F::zst(|x, _| {
         unsafe { COUNTER += 1 }
         x
-    })).call(f_id);
+    })).call(f_main);
     unsafe { println!("{COUNTER}") }
 }
     """)

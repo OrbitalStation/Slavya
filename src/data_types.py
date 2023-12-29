@@ -9,6 +9,7 @@ Expr = Any
 @dataclass
 class Argument:
     name: str
+    ty: Expr
 
 
 @dataclass

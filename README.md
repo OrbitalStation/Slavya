@@ -49,8 +49,5 @@ fn main() {
 The argument is used to show this "3" on the screen.
 It transforms Slavya's Church 3 into a Rust one and displays it.
 
-The examples given in the `code.slavya` at the moment of the commit is implements
-calculation of the factorial of 5, purely in Slavya.
-
 ## License
 Licensed under Apache-2.0 conditions(check out `LICENSE.md`)

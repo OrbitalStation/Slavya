@@ -1,15 +1,10 @@
 from sys import stderr
 from os.path import realpath
-from functools import reduce
 from typing import Optional, NoReturn
-from src.codegen.evaluate import evaluate
-from src.codegen.compile import ccompile
 from src.data_types import *
 from src import utils
 
 
-@utils.mixin("evaluate", lambda self: reduce(lambda a, v: a | {v.name: evaluate(v.body)}, self.without_comments(), {}))
-@utils.mixin("compile", lambda self, extra_code: ccompile(self.without_comments(), extra_code))
 class Chopper:
     def __init__(self, file_name: str):
         self._file = realpath(file_name)
@@ -19,12 +14,13 @@ class Chopper:
         self._column = 0
         self._statements_or_comments = []
 
-    def iterate(self, lines):
+    def iterate(self, lines) -> list[Statement]:
         for line in lines:
             self.set(line)
             if line == "":
                 continue
             self.statement_or_comment()
+        return self._statements_or_comments
 
     def dump(self):
         print(*self._statements_or_comments, sep="\n")
@@ -42,9 +38,6 @@ class Chopper:
         _ = utils.or_else(self.token("="), lambda: self.err("Expected a token `=`"))
         body = self.expr()
         self._statements_or_comments.append(Statement(name, body))
-
-    def without_comments(self):
-        return filter(lambda soc: not isinstance(soc, Comment), self._statements_or_comments)
 
     def comment(self) -> Optional[Comment]:
         if self.token("*") is not None:
@@ -89,8 +82,10 @@ class Chopper:
                     self.err("Invalid inner content")
                 self._string = original
                 args_for_call.append(inner)
-            else:
+            elif len(args_for_call) == 0:
                 self.err("Expected expression")
+            else:
+                break
         while len(args_for_call) > 1:
             arg = args_for_call.pop(1)
             args_for_call[0] = Application(args_for_call[0], arg)
@@ -118,10 +113,16 @@ class Chopper:
         backup = self.backup()
         if (argument := self.identifier()) is None:
             return
+        if self.token(":") is None:
+            self.rollback(backup)
+            return
+        if (ty := self.expr(abstractions_arguments)) is None:
+            self.rollback(backup)
+            return
         if self.token("->") is None:
             self.rollback(backup)
             return
-        argument = Argument(argument)
+        argument = Argument(argument, ty)
         if (body := self.expr(abstractions_arguments + (argument,))) is None:
             self.err("Expected a body after `->`")
         return Abstraction(argument, body)
