@@ -20,7 +20,7 @@ use heart::F;
     """
 
     open("./compiled/main.rs", "wt").write(main_rs)
-    system("cd compiled && rustc main.rs && ./main")
+    system("cd compiled && rustc main.rs -C opt-level=3 && ./main")
 
 
 def modify_arg(name: str) -> str:
