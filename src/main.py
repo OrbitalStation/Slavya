@@ -1,16 +1,24 @@
-from src.chop import Chopper
+from src import chop
+from os.path import realpath
 from src.codegen.compile import ccompile
 
 
 def read_file(filename: str):
     with open(filename, "rt") as file:
-        return map(str.strip, file.read().split("\n"))
+        return filter(len, map(str.strip, file.read().split("\n")))
+
+
+def parse_file(filename: str):
+    info = chop.Info(realpath(filename), 1, [])
+    for line in read_file(filename):
+        info.top_level.append(chop.top_level(info, chop.Parseable(line)))
+    return info.top_level
 
 
 def main(code_file: str):
-    chop = Chopper(code_file)
-    chop.iterate(read_file(code_file))
-    ccompile(chop.without_comments(), """
+    parsed = parse_file(code_file)
+
+    ccompile(parsed, """
 static mut COUNTER: usize = 0;
 fn main() {
     f_main.call(F::zst(|x, _| {

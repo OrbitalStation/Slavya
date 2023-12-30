@@ -42,3 +42,6 @@ class Statement:
 @dataclass
 class Comment:
     source: str
+
+
+type TopLevel = Statement | Comment

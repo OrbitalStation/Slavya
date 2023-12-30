@@ -4,12 +4,12 @@ from os import system
 import src.data_types as dt
 
 
-def ccompile(statements: list[dt.Statement], extra_code: str):
+def ccompile(top_level: list[dt.TopLevel], extra_code: str):
     """
     Compile Slavya data structures to Rust
     """
 
-    stmts = "\n".join(map(_stmt, statements))
+    stmts = "\n".join(map(_top_level, top_level))
 
     main_rs = f"""
 #![allow(unused_variables, non_upper_case_globals, dead_code)]
@@ -31,12 +31,14 @@ def modify_static(name: str) -> str:
     return f"f_{name}"
 
 
-def _stmt(stmt: dt.Statement) -> str:
-    body = _expr(stmt.body, ())
+def _top_level(top_level: dt.TopLevel) -> str:
+    if isinstance(top_level, dt.Comment):
+        return f"/* {top_level.source} */"
+    body = _expr(top_level.body, ())
     # Cannot make calling const in Rust
-    if isinstance(stmt.body, dt.Application):
+    if isinstance(top_level.body, dt.Application):
         body = f"F::gen(|| {body})"
-    return f"const {modify_static(stmt.name)}: F = {body};"
+    return f"const {modify_static(top_level.name)}: F = {body};"
 
 
 def _expr(expr: dt.Expr, arguments: tuple[str, ...], no_clone_required: bool = False) -> str:
