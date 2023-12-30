@@ -17,9 +17,10 @@ This language's name is "Slavya" and this repo is its compiler.
 
 ## How to use?
 Right now you can write your Slavya code to a file(e.g. `code.🌲`)
-    and means to show it on the screen as the argument to `chop.compile(...)`
+    and means to show it on the screen as the argument to `ccompile(...)`
     function call in the `main` function in the `src/main.py` file.
-Then you should run `main.py` with python3 interpreter.
+Then you should run `main.py` with python(version >=3.12) interpreter.
+It also requires `rustc` compiler.
 
 Currently, uses `.🌲` file extension(`.slavya` is also being considered).
 

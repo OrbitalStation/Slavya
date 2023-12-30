@@ -1,55 +1,27 @@
-from sys import stderr
+from typing import Callable, Any
 from src.data_types import *
-from typing import Optional, NoReturn, Self, Callable, Any
-from dataclasses import dataclass
 from src import utils
-
-
-@dataclass
-class Info:
-    file: str
-    line: int
-    top_level: list[TopLevel]
-
-
-@dataclass
-class Parseable:
-    full_string: str
-    column: int = 0
-
-    @property
-    def string(self) -> str:
-        return self.full_string[self.column:]
-
-    def cut(self, at: int) -> tuple[str, Self]:
-        return self.string[:at], Parseable(self.full_string,
-                                           self.column + at + max(utils.find(" ".__ne__, self.string[at:]), 0))
-
-    def empty(self) -> Self:
-        return Parseable(self.full_string, len(self.full_string))
-
-    def is_empty(self) -> bool:
-        return self.column >= len(self.full_string)
-
-
-type With[T] = tuple[Optional[T], Parseable]
+from src.parse.prelude import *
 
 
 def top_level(info: Info, p: Parseable) -> TopLevel:
     if not utils.is_none1(xxx := comment(p)):
         comm, _ = xxx
         return comm
-    if utils.is_none1(xxx := identifier(p)):
-        err(info, p, "Expected an identifier")
-    name, p2 = xxx
-    if utils.is_none1(xxx := token(p2, "=")):
-        err(info, p2, "Expected a token `=`")
-    _, p3 = xxx
-    if utils.is_none1(xxx := expr(info, p3)):
-        err(info, p3, "Expected an expression")
-    body, p4 = xxx
-    if not p4.is_empty():
-        err(info, p4, f"Unexpected: `{p4.string}`")
+    seq, p2 = sequence(info, p, [
+        utils.ignore1(identifier),
+        utils.ignore1(utils.rpartial(token, "=")),
+        utils.rpartial(expr, ())
+    ])
+    if isinstance(seq, int):
+        err(info, p2, [
+            "Expected an identifier",
+            "Expected a token ` = `",
+            "Expected an expression"
+        ][seq])
+    name, _, body = seq
+    if not p2.is_empty():
+        err(info, p2, f"Unexpected: `{p2.string}`")
     return Statement(name, body)
 
 
@@ -93,9 +65,7 @@ def surrounded(info: Info, p: Parseable, opening: str, closing: str) -> With[str
     return string[:-1], p3
 
 
-def expr(info: Info, p: Parseable, abstractions_arguments: Optional[tuple[Argument, ...]] = None) -> With[Expr]:
-    if abstractions_arguments is None:
-        abstractions_arguments = ()
+def expr(info: Info, p: Parseable, abstractions_arguments: tuple[Argument, ...]) -> With[Expr]:
     args_for_call = []
     while len(p.string) > 0:
         if not utils.is_none1(xxx := abstraction(info, p, abstractions_arguments)):
@@ -146,7 +116,7 @@ def abstraction(info: Info, p: Parseable, abstractions_arguments: tuple[Argument
         utils.rpartial(expr, abstractions_arguments),
         utils.ignore1(utils.rpartial(token, "->"))
     ])
-    if seq is None:
+    if isinstance(seq, int):
         return None, p
     argument, _, ty, _ = seq
     argument = Argument(argument, ty)
@@ -157,19 +127,12 @@ def abstraction(info: Info, p: Parseable, abstractions_arguments: tuple[Argument
 
 
 def sequence(info: Info, p: Parseable, seq: list[Callable[[Info, Parseable], With[Any]]]) \
-        -> tuple[Optional[list[Any]], Parseable]:
+        -> tuple[list[Any] | int, Parseable]:
     collected = []
-    curp = p
     for parser in seq:
-        parsed, newp = parser(info, curp)
+        parsed, newp = parser(info, p)
         if parsed is None:
-            return None, p
+            return len(collected), p
         collected.append(parsed)
-        curp = newp
-    return collected, curp
-
-
-def err(info: Info, p: Parseable, description: str) -> NoReturn:
-    location = f"At {info.file}:{info.line}:{p.column}"
-    print(location + "\n\t" + p.full_string + "\n" + description, file=stderr)
-    exit(1)
+        p = newp
+    return collected, p

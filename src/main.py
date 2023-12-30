@@ -1,4 +1,4 @@
-from src import chop
+from src.parse import chop
 from os.path import realpath
 from src.codegen.compile import ccompile
 
