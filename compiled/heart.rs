@@ -9,7 +9,7 @@ extern crate core;
 ///
 /// A function with possible data attached
 ///
-/// Can be in three states:
+/// Can be in four states:
 /// 1. Full (created by `F::new`). This state has some allocated data, thus it cannot be created at compile-time.
 ///     In this state `self.data` is a pointer to the tuple `(RefCountTy, <drop fn of the data>, <the data, size unknown>)`.
 ///     Performs reference counting on clone; drops data.
@@ -21,15 +21,18 @@ extern crate core;
 ///     of it - `F::malloc_non_usize_max`. `ptr` points to the generator function of signature `fn() -> F`.
 ///     A generator is evaluated at the first opportunity: at a clone or a call. When it is evaluated, the generator is
 ///     used as if it was the real value - `F::clone` returns it and `F::call` calls on it.
+/// 4. A mark - created by `F::mark`. A special state used to mark arguments; solely used by AXIOM_FUN.
+///    `self.ptr` is null, `self.data` is the number of the mark
 ///
 pub struct F {
-    ptr: fn(F, TypeErased) -> F,
+    ptr: TypeErased,
     data: TypeErased
 }
 
 impl F {
+    /// Full form
     pub fn new <ActualData> (fun: fn(F, &ActualData) -> F, data: ActualData) -> F {
-        use heart::core::{ptr::{read, write}, mem::{size_of, transmute}};
+        use heart::core::{ptr::{read, write}, mem::size_of};
         debug_assert!(size_of::<ActualData>() > 0, "use `F::zst` if you want to use a ZST");
 
         let pointee = unsafe { Self::malloc_non_usize_max(size_of::<RefCountTy>() + size_of::<fn(&mut ActualData)>() + size_of::<ActualData>()) };
@@ -47,8 +50,7 @@ impl F {
         }
 
         Self {
-            // `F::call` only supplies pointers to `ActualData` so it's fine
-            ptr: unsafe { transmute(fun) },
+            ptr: fun as TypeErased,
             data: pointee
         }
     }
@@ -56,7 +58,7 @@ impl F {
     /// Ignore `usize` in `fun`
     pub const fn zst(fun: fn(F, usize) -> F) -> F {
         Self {
-            ptr: unsafe { core::mem::transmute(fun) },
+            ptr: fun as TypeErased,
             data: core::ptr::null()
         }
     }
@@ -64,10 +66,18 @@ impl F {
     /// Abusing the system: lazy evaluation of `fun`
     pub const fn gen(fun: fn() -> F) -> F {
         Self {
-            ptr: unsafe { core::mem::transmute(fun) },
+            ptr: fun as TypeErased,
 
             // Indicator that the generator is not yet evaluated
             data: usize::MAX as TypeErased
+        }
+    }
+
+    /// Used when calculating AXIOM_FUN
+    pub const fn mark(mark: usize) -> F {
+        Self {
+            ptr: core::ptr::null(),
+            data: mark as TypeErased
         }
     }
 
@@ -75,10 +85,76 @@ impl F {
         if self.is_gen() {
             return self.evaluate_gen().call(value)
         }
+        if self.is_mark() {
+            return if value.is_mark() && self.mark_value() == value.mark_value() {
+                CHURCH_TRUE
+            } else {
+                CHURCH_FALSE
+            }
+        }
         // Even if `self.data` is null, `actual_data` calculates address
         //   but does not dereference it, so we're fine
-        (self.ptr)(value, self.actual_data())
+        (unsafe { core::mem::transmute::<_, fn(F, TypeErased) -> F>(self.ptr) })(value, self.actual_data())
     }
+}
+
+pub const AXIOM_ANY: F = F::zst(axiom_any_final);
+pub const AXIOM_FUN: F = F::zst(|input, _| F::new(|output, input| F::new(axiom_fun_final, (input.clone(), output)), input));
+pub const AXIOM_TY: F = F::zst(axiom_ty_final);
+
+const CHURCH_FALSE: F = F::zst(|_, _| F::zst(|y, _| y));
+const CHURCH_TRUE: F = F::zst(|x, _| F::new(|_, x| x.clone(), x));
+const CHURCH_BOOL: F = F::zst(axiom_bool_final);
+
+/* Next few functions are separate because we need to reference their address */
+
+fn axiom_fun_final(input: F, data: &(F, F)) -> F {
+    static mut CURRENT_MARK: usize = 0;
+
+    let Some((in2, out2)) = input.get_fun_arg_ty_and_ret_ty_gen_if_possible() else {
+        // If it is not a `fun Arg Ret` then it can be either an axiom or a not-a-function
+        todo!("called `fun` on an axiom or a not-a-function")
+        //return CHURCH_FALSE
+    };
+    let (r#in, out) = data;
+    let arg_ok = in2.call(r#in.clone());
+
+    let mark = F::mark(unsafe { CURRENT_MARK });
+    unsafe { CURRENT_MARK += 1 }
+    let out_generated = out.call(mark.clone());
+    let out2_generated = out2.call(mark);
+    unsafe { CURRENT_MARK -= 1 }
+
+    let ret_ok = out_generated.call(out2_generated);
+    let both = arg_ok.call(ret_ok).call(arg_ok.clone());
+    return both
+}
+
+fn axiom_any_final(_: F, _: usize) -> F {
+    CHURCH_TRUE
+}
+
+/// Type `Ty` is defined recursively -- `Ty = fun any bool`(`bool` needs `Ty`),
+///     that's why there are all these ceremonies around it
+fn axiom_ty_final(f: F, _: usize) -> F {
+    if f.is_axiom_of_type_ty() {
+        CHURCH_TRUE
+    } else {
+        AXIOM_FUN.call(AXIOM_ANY).call(CHURCH_BOOL).call(f)
+    }
+}
+
+/// Ugly, dirty, terrible hack
+/// Instead of properly defining bool as a type
+///     we just give `f` two marks and see if it returns either,
+///     and if that's the case, then we got either `true` or `false`
+///     -- both of which are `bool`.
+fn axiom_bool_final(f: F, _: usize) -> F {
+    const MARK1: F = F::mark(usize::MAX);
+    const MARK2: F = F::mark(usize::MAX - 1);
+    let returned = f.call(MARK1).call(MARK2);
+    let p = MARK1.call(returned.clone());
+    return p.call(p.clone()).call(MARK2.call(returned.clone()))
 }
 
 type TypeErased = *const ();
@@ -111,6 +187,27 @@ impl F {
         }
     }
 
+    fn is_axiom_of_type_ty(&self) -> bool {
+        let p = self.ptr as usize;
+        return p == axiom_fun_final as *const () as usize
+        || p == axiom_any_final as *const () as usize
+        || p == axiom_ty_final as *const () as usize
+        || p == axiom_bool_final as *const () as usize
+    }
+
+    fn get_fun_arg_ty_and_ret_ty_gen_if_possible(&self) -> Option <(F, F)> {
+        if self.is_gen() {
+            return self.evaluate_gen().get_fun_arg_ty_and_ret_ty_gen_if_possible()
+        }
+
+        if self.ptr as usize != axiom_fun_final as *const () as usize {
+            // Not a `fun Arg Ret` expression
+            return None
+        }
+        let data = unsafe { &*(self.actual_data() as *const (F, F)) };
+        Some((data.0.clone(), data.1.clone()))
+    }
+
     #[inline]
     fn refs(&self) -> RefCountTy {
         unsafe { core::ptr::read(self.data as *const RefCountTy) }
@@ -133,6 +230,11 @@ impl F {
     }
 
     #[inline]
+    fn mark_value(&self) -> usize {
+        self.data as usize
+    }
+
+    #[inline]
     fn is_zst(&self) -> bool {
         self.data.is_null()
     }
@@ -140,6 +242,11 @@ impl F {
     #[inline]
     fn is_gen(&self) -> bool {
         self.data as usize == usize::MAX
+    }
+
+    #[inline]
+    fn is_mark(&self) -> bool {
+        self.ptr.is_null()
     }
 
     fn evaluate_gen(&self) -> F {
@@ -152,7 +259,7 @@ impl Clone for F {
         if self.is_gen() {
             return self.evaluate_gen()
         }
-        if !self.is_zst() {
+        if !self.is_zst() && !self.is_mark() {
             let new_refs = self.refs() + 1;
             assert!(new_refs < MAX_REFS, "too many F clones");
             self.set_refs(new_refs)
@@ -166,7 +273,7 @@ impl Clone for F {
 
 impl Drop for F {
     fn drop(&mut self) {
-        if self.is_gen() || self.is_zst() {
+        if self.is_mark() || self.is_gen() || self.is_zst() {
             return
         }
         let new_refs = self.refs() - 1;

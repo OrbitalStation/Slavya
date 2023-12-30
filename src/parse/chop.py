@@ -53,12 +53,12 @@ def surrounded(info: Info, p: Parseable, opening: str, closing: str) -> With[str
     offset = 0
     for ch in p2.string:
         offset += 1
-        if ch == opening:
-            unclosed += 1
-        elif ch == closing:
+        if ch == closing:
             unclosed -= 1
             if unclosed == 0:
                 break
+        elif ch == opening:
+            unclosed += 1
     if unclosed != 0:
         err(info, p2, f"Unclosed pair of `{opening}{closing}`")
     string, p3 = p2.cut(offset)
@@ -79,6 +79,9 @@ def expr(info: Info, p: Parseable, abstractions_arguments: tuple[Argument, ...])
                 if utils.is_none1(xxx := surrounded(info, p2, "[", "]")):
                     err(info, p2, "Bad axiom syntax")
                 axiom, p3 = xxx
+                if utils.is_none1(xxx := surrounded(info, Parseable(axiom), '"', '"')):
+                    err(info, p2, "Bad axiom syntax")
+                axiom, _ = xxx
                 if axiom not in AXIOMS.keys():
                     err(info, p2, f"Unknown axiom: `{axiom}`")
                 args_for_call.append(AXIOMS[axiom])

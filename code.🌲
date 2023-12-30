@@ -1,4 +1,9 @@
-id = x: axiom[A] -> x
+any = axiom["A"]
 
-* Naughty naughty naughty we like to party
-main = id
+id = x: any -> x
+
+* true  = x: any -> y: any -> x
+* false = x: any -> y: any -> y
+
+* TODO: This doesn't work for now and IDK why!
+main = id id id
