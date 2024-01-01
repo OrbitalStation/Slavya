@@ -4,7 +4,7 @@
 //! The core functionality for Slavya to work
 //!
 
-extern crate core;
+use std::process::ExitCode;
 
 ///
 /// A function with possible data attached
@@ -32,7 +32,7 @@ pub struct F {
 impl F {
     /// Full form
     pub fn new <ActualData> (fun: fn(F, &ActualData) -> F, data: ActualData) -> F {
-        use heart::core::{ptr::{read, write}, mem::size_of};
+        use std::{ptr::{read, write}, mem::size_of};
         debug_assert!(size_of::<ActualData>() > 0, "use `F::zst` if you want to use a ZST");
 
         let pointee = unsafe { Self::malloc_non_usize_max(size_of::<RefCountTy>() + size_of::<fn(&mut ActualData)>() + size_of::<ActualData>()) };
@@ -59,7 +59,7 @@ impl F {
     pub const fn zst(fun: fn(F, usize) -> F) -> F {
         Self {
             ptr: fun as TypeErased,
-            data: core::ptr::null()
+            data: std::ptr::null()
         }
     }
 
@@ -76,7 +76,7 @@ impl F {
     /// Used when calculating AXIOM_FUN
     pub const fn mark(mark: usize) -> F {
         Self {
-            ptr: core::ptr::null(),
+            ptr: std::ptr::null(),
             data: mark as TypeErased
         }
     }
@@ -94,8 +94,40 @@ impl F {
         }
         // Even if `self.data` is null, `actual_data` calculates address
         //   but does not dereference it, so we're fine
-        (unsafe { core::mem::transmute::<_, fn(F, TypeErased) -> F>(self.ptr) })(value, self.actual_data())
+        (unsafe { std::mem::transmute::<_, fn(F, TypeErased) -> F>(self.ptr) })(value, self.actual_data())
     }
+}
+
+pub fn type_check(filename: &str, array: &[(F, (usize, usize))]) -> ExitCode {
+    static mut BOOLEAN: Option <bool> = None;
+
+    const True: F = F::zst(|x, _| {
+        unsafe { BOOLEAN = Some(true) }
+        x
+    });
+
+    const False: F = F::zst(|x, _| {
+        unsafe { BOOLEAN = Some(false) }
+        x
+    });
+
+    fn fail(filename: &str, line: usize, column: usize, msg: &str) -> ExitCode {
+        eprintln!("At {filename}:{line}:{column}\n{msg}");
+        return ExitCode::FAILURE
+    }
+
+    for (ty, (line, column)) in array {
+        ty.call(True).call(False).call(/* stub */ True);
+        if let Some(boolean) = std::mem::replace(unsafe { &mut BOOLEAN }, None) {
+            if !boolean {
+                return fail(filename, *line, *column, "Typechecking failed")
+            }
+        } else {
+            return fail(filename, *line, *column, "Not a type")
+        }
+    }
+
+    ExitCode::SUCCESS
 }
 
 pub const AXIOM_ANY:    F = F::zst(axiom_any_final);
@@ -224,22 +256,22 @@ impl F {
 
     #[inline]
     fn refs(&self) -> RefCountTy {
-        unsafe { core::ptr::read(self.data as *const RefCountTy) }
+        unsafe { std::ptr::read(self.data as *const RefCountTy) }
     }
 
     #[inline]
     fn set_refs(&self, new: RefCountTy) {
-        unsafe { core::ptr::write(self.data as *mut RefCountTy, new) }
+        unsafe { std::ptr::write(self.data as *mut RefCountTy, new) }
     }
 
     #[inline]
     fn data_drop_fn(&self) -> fn(TypeErased) {
-        unsafe { core::ptr::read((self.data as usize + core::mem::size_of::<RefCountTy>()) as *const fn(TypeErased)) }
+        unsafe { std::ptr::read((self.data as usize + std::mem::size_of::<RefCountTy>()) as *const fn(TypeErased)) }
     }
 
     #[inline]
     fn actual_data(&self) -> TypeErased {
-        use heart::core::mem::size_of;
+        use std::mem::size_of;
         (self.data as usize + size_of::<RefCountTy>() + size_of::<fn(TypeErased)>()) as TypeErased
     }
 
@@ -264,7 +296,7 @@ impl F {
     }
 
     fn evaluate_gen(&self) -> F {
-        unsafe { core::mem::transmute::<_, fn() -> F>(self.ptr)() }
+        unsafe { std::mem::transmute::<_, fn() -> F>(self.ptr)() }
     }
 }
 
