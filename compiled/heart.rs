@@ -98,9 +98,11 @@ impl F {
     }
 }
 
-pub const AXIOM_ANY: F = F::zst(axiom_any_final);
-pub const AXIOM_FUN: F = F::zst(|input, _| F::new(|output, input| F::new(axiom_fun_final, (input.clone(), output)), input));
-pub const AXIOM_TY: F = F::zst(axiom_ty_final);
+pub const AXIOM_ANY:    F = F::zst(axiom_any_final);
+pub const AXIOM_FUN:    F = F::zst(|input, _| F::new(|output, input| F::new(axiom_fun_final, (input.clone(), output)), input));
+pub const AXIOM_TY:     F = F::zst(axiom_ty_final);
+pub const AXIOM_RET_TY: F = F::zst(axiom_ret_ty_final);
+pub const AXIOM_ARG_TY: F = F::zst(axiom_arg_ty_final);
 
 const CHURCH_FALSE: F = F::zst(|_, _| F::zst(|y, _| y));
 const CHURCH_TRUE: F = F::zst(|x, _| F::new(|_, x| x.clone(), x));
@@ -155,6 +157,18 @@ fn axiom_bool_final(f: F, _: usize) -> F {
     let returned = f.call(MARK1).call(MARK2);
     let p = MARK1.call(returned.clone());
     return p.call(p.clone()).call(MARK2.call(returned.clone()))
+}
+
+/// This is not a type and we do not need address of this function,
+///     but it's separated for consistency
+fn axiom_ret_ty_final(of: F, _: usize) -> F {
+    let (_, out) = of.get_fun_arg_ty_and_ret_ty_gen_if_possible().expect("called `AXIOM_RET_TY` on not-a-function");
+    return out
+}
+
+fn axiom_arg_ty_final(of: F, _: usize) -> F {
+    let (r#in, _) = of.get_fun_arg_ty_and_ret_ty_gen_if_possible().expect("called `AXIOM_ARG_TY` on not-a-function");
+    return r#in
 }
 
 type TypeErased = *const ();

@@ -22,7 +22,7 @@ def ttop_level(top_level: dt.TopLevel) -> str:
     return f"const {analysis.modify_static(top_level.name)}: F = {body};"
 
 
-def eexpr(expr: dt.Expr, arguments: tuple[str, ...], no_clone_required: bool = False) -> str:
+def eexpr(expr: dt.Expr, arguments: tuple[analysis.ModifiedName, ...], no_clone_required: bool = False) -> str:
     match type(expr):
         case dt.Argument:
             modified = analysis.modify_arg(expr.name)
@@ -51,8 +51,8 @@ def eexpr(expr: dt.Expr, arguments: tuple[str, ...], no_clone_required: bool = F
             return analysis.modify_static(expr.name)
 
 
-def expr_index(filtered: tuple[tuple[int, str], ...], previous_abstraction_argument_name: str):
-    def inner(bound_name: str) -> str:
+def expr_index(filtered: tuple[tuple[int, str], ...], previous_abstraction_argument_name: analysis.ModifiedName):
+    def inner(bound_name: analysis.ModifiedName) -> str:
         if bound_name == previous_abstraction_argument_name:
             return f"{previous_abstraction_argument_name}.clone()"
         else:

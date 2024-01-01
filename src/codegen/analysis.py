@@ -17,19 +17,40 @@ use heart::*;
     """
 
 
-def modify_arg(name: str) -> str:
-    return f"a_{name}"
+class ModifiedName:
+    """
+    A disgusting hack used to prevent double name modification in `src.codegen.typecheck.compile_typed` function
+    Replace with something better as soon as a solution is found
+    """
+
+    def __init__(self, value, how):
+        if isinstance(value, ModifiedName):
+            self.value = value.value
+        elif isinstance(value, str):
+            self.value = how(value)
+
+    def __str__(self):
+        return self.value
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __add__(self, other):
+        return str(self) + str(other)
 
 
-def modify_static(name: str) -> str:
-    return f"f_{name}"
+def modify_general(prefix: str):
+    def inner(ident: str | ModifiedName) -> ModifiedName:
+        return ModifiedName(ident, lambda name: f"{prefix}_{name}")
+    return inner
 
 
-def modify_type(name: str) -> str:
-    return f"t_{name}"
+modify_arg    = modify_general("a")
+modify_static = modify_general("f")
+modify_type   = modify_general("t")
 
 
-def get_bound_arguments(expr: dt.Expr, arguments: tuple[str, ...]) -> tuple[str, ...]:
+def get_bound_arguments(expr: dt.Expr, arguments: tuple[ModifiedName, ...]) -> tuple[ModifiedName, ...]:
     match type(expr):
         case dt.Argument:
             modified = modify_arg(expr.name)

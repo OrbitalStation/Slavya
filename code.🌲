@@ -2,8 +2,7 @@ any = axiom["A"]
 
 id = x: any -> x
 
-* true  = x: any -> y: any -> x
-* false = x: any -> y: any -> y
+true  = x: any -> y: any -> x
+false = x: any -> y: any -> y
 
-* TODO: This doesn't work for now and IDK why!
-main = id id id
+main = id id id true

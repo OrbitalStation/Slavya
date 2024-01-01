@@ -29,9 +29,15 @@ class Application:
 
 
 class Axiom(IntEnum):
-    ANY = 0
-    FUN = 1
-    TY  = 2
+    ANY    = 0
+    FUN    = 1
+
+    # These guys cannot be obtained via `axiom["..."]`,
+    #   but in difference to CHURCH_BOOL, CHURCH_TRUE, etc.
+    #   that are present only in `heart.rs` we need to reference them
+    #   in python code also, so that's why they are in here
+    TY     = 2
+    RET_TY = 3
 
 
 AXIOMS = {

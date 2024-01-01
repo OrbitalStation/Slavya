@@ -78,7 +78,7 @@ fn main() -> Result <(), ()> {{
     """)
 
 
-def _expr(expr: dt.Expr, stmts: list[TypedTopLevel], arguments: tuple[str, ...], filename: str)\
+def _expr(expr: dt.Expr, stmts: list[TypedTopLevel], arguments: tuple[analysis.ModifiedName, ...], filename: str) \
         -> tuple[dt.Expr, list[str], set[int]]:
     match type(expr):
         case dt.Argument:
@@ -92,12 +92,13 @@ def _expr(expr: dt.Expr, stmts: list[TypedTopLevel], arguments: tuple[str, ...],
         case dt.Application:
             fn_ty, compiled1, code1, used1 = compile_typed(expr.function, stmts, arguments, filename)
             arg_ty, compiled2, code2, used2 = compile_typed(expr.argument, stmts, arguments, filename)
-            code3_call = f"{compiled1}.call({compiled2})"
+            code3_call = f"AXIOM_ARG_TY.call({compiled1}).call({compiled2})"
             # TODO: Add span
+            # TODO: Rework location & in general typechecking appearance in typecheck.rs
             code3_location = f"At {filename}:<unknown>:<unknown>"
             combined_code = code1 + code2 + [f'({code3_call}, "{code3_location}")']
             combined_used = used1 | used2
-            return dt.Application(fn_ty.function, arg_ty), combined_code, combined_used
+            return dt.Application(dt.Application(dt.Axiom.RET_TY, fn_ty), arg_ty), combined_code, combined_used
         case dt.Axiom:
             match expr:
                 case dt.Axiom.ANY | dt.Axiom.FUN | dt.Axiom.TY:
@@ -106,10 +107,13 @@ def _expr(expr: dt.Expr, stmts: list[TypedTopLevel], arguments: tuple[str, ...],
             return stmts[utils.find(lambda s: isinstance(s, Typed) and s.data.name == expr.name, stmts)].ty, [], set()
 
 
-def compile_typed(expr: dt.Expr, stmts: list[TypedTopLevel], arguments: tuple[str, ...], filename: str)\
-        -> tuple[dt.Expr, str, list[str], set[int]]:
+def compile_typed(
+        expr: dt.Expr,
+        stmts: list[TypedTopLevel],
+        arguments: tuple[analysis.ModifiedName, ...],
+        filename: str) -> tuple[dt.Expr, str, list[str], set[int]]:
     if isinstance(expr, dt.Statement):
-        ty = stmts[utils.find(lambda s: isinstance(s, Typed) and s.data.name == expr.name, stmts)].ty
-        return ty, analysis.modify_type(expr.name), [], set()
+        ss = stmts[utils.find(lambda s: isinstance(s, Typed) and s.data.name == expr.name, stmts)]
+        return dt.Statement(analysis.modify_type(ss.data.name), ss.ty), analysis.modify_type(expr.name), [], set()
     ty, code, used = _expr(expr, stmts, arguments, filename)
     return ty, ccompile.eexpr(ty, arguments), code, used
