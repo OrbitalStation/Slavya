@@ -33,7 +33,8 @@ def eexpr(expr: dt.Expr, arguments: tuple[analysis.ModifiedName, ...], no_clone_
                 return modified + clone
             return f"data.{idx}" + clone
         case dt.Abstraction:
-            bound = analysis.get_bound_arguments(expr.body, arguments)
+            # `set`s do not preserve order, which will crucial later, so convert to tuple
+            bound = tuple(analysis.get_bound_arguments(expr.body, arguments))
             arg_name = analysis.modify_arg(expr.argument.name)
             body = eexpr(expr.body, bound + (arg_name,))
             if len(bound) == 0:

@@ -38,6 +38,9 @@ class ModifiedName:
     def __add__(self, other):
         return str(self) + str(other)
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 def modify_general(prefix: str):
     def inner(ident: str | ModifiedName) -> ModifiedName:
@@ -50,18 +53,17 @@ modify_static = modify_general("f")
 modify_type   = modify_general("t")
 
 
-def get_bound_arguments(expr: dt.Expr, arguments: tuple[ModifiedName, ...]) -> tuple[ModifiedName, ...]:
+def get_bound_arguments(expr: dt.Expr, arguments: tuple[ModifiedName, ...]) -> set[ModifiedName]:
     match type(expr):
         case dt.Argument:
             modified = modify_arg(expr.name)
-            return (modified,) if modified in arguments else ()
+            return {modified} if modified in arguments else set()
         case dt.Abstraction:
             return get_bound_arguments(expr.body, arguments)
         case dt.Application:
-            return _add_uniquely(get_bound_arguments(expr.function, arguments),
-                                 get_bound_arguments(expr.argument, arguments))
+            return get_bound_arguments(expr.function, arguments) | get_bound_arguments(expr.argument, arguments)
         case dt.Axiom | dt.Statement:
-            return ()
+            return set()
 
 
 def get_used_statements(expr: dt.Expr, stmts) -> set[int]:
@@ -78,12 +80,3 @@ def get_used_statements(expr: dt.Expr, stmts) -> set[int]:
             return set()
         case dt.Statement:
             return {utils.find(lambda s: isinstance(s, Typed) and s.data.name == expr.name, stmts)}
-
-
-# TODO: try replacing with sets
-def _add_uniquely[T](a: tuple[T, ...], b: tuple[T, ...]) -> tuple[T, ...]:
-    a = list(a)
-    for item in b:
-        if item not in a:
-            a.append(item)
-    return tuple(a)
