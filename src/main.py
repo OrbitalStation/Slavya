@@ -21,7 +21,6 @@ def parse_file(filename: str):
 def main(code_file: str):
     code_file = realpath(code_file)
     parsed = parse_file(code_file)
-    typecheck(parsed, code_file)
     ccompile(parsed, """
 static mut COUNTER: usize = 0;
 fn main() {

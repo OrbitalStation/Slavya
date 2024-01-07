@@ -12,3 +12,6 @@ Cargo.lock
 
 # Wannabe language concepts; not intented to be shown
 exampleCode.🌲
+
+# Temporarily disabled with `git rm`
+src/codegen/typecheck.py
