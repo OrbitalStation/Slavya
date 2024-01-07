@@ -1,0 +1,4 @@
+[package]
+name = "compiled"
+edition = "2021"
+version = "0.0.0"

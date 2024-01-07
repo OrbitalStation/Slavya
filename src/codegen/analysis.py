@@ -4,9 +4,9 @@ from src import utils
 
 
 # TODO: Switch to `cargo`
-def compile_and_run(mod_name: str, text: str):
-    open(f"./compiled/{mod_name}.rs", "wt").write(text)
-    system(f"cd compiled && rustc {mod_name}.rs -C opt-level=3 && ./{mod_name}")
+def compile_and_run(text: str, mod_name: str = "main"):
+    open(f"./compiled/src/{mod_name}.rs", "wt").write(text)
+    system(f"cd compiled && cargo run -r -q")
 
 
 def rs_template(code: str):

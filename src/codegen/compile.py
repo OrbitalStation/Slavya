@@ -9,7 +9,7 @@ def ccompile(top_level_list: list[dt.TopLevel], extra_code: str, filename: str =
     """
     stmts = "\n".join(map(ttop_level, top_level_list))
     file_rs = analysis.rs_template(stmts + "\n" + extra_code)
-    analysis.compile_and_run(filename, file_rs)
+    analysis.compile_and_run(file_rs, filename)
 
 
 def ttop_level(top_level: dt.TopLevel) -> str:

@@ -31,7 +31,7 @@ def typecheck(top_level_list: list[dt.TopLevel], filename: str):
     stmts = "\n".join(map(ttop_level, filter(lambda x: not isinstance(x, dt.Comment), stmts)))
 
     file_rs = typecheck_rs_template(typecheck_code, used_statements + "\n" + stmts, filename)
-    analysis.compile_and_run("typecheck", file_rs)
+    analysis.compile_and_run(file_rs)
 
 
 def ttop_level(x):
