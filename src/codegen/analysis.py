@@ -3,6 +3,7 @@ from os import system
 from src import utils
 
 
+# TODO: Switch to `cargo`
 def compile_and_run(mod_name: str, text: str):
     open(f"./compiled/{mod_name}.rs", "wt").write(text)
     system(f"cd compiled && rustc {mod_name}.rs -C opt-level=3 && ./{mod_name}")

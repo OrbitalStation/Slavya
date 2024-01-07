@@ -131,25 +131,33 @@ pub fn type_check(filename: &str, array: &[(F, (usize, usize))]) -> ExitCode {
 }
 
 pub const AXIOM_ANY:    F = F::zst(axiom_any_final);
-pub const AXIOM_FUN:    F = F::zst(|input, _| F::new(|output, input| F::new(axiom_fun_final, (input.clone(), output)), input));
+pub const AXIOM_FUN:    F = F::zst(axiom_fun_start);
 pub const AXIOM_TY:     F = F::zst(axiom_ty_final);
 pub const AXIOM_RET_TY: F = F::zst(axiom_ret_ty_final);
 pub const AXIOM_ARG_TY: F = F::zst(axiom_arg_ty_final);
 
+pub const FUN_FULL_TY:  F = F::gen(fun_full_ty);
+
 const CHURCH_FALSE: F = F::zst(|_, _| F::zst(|y, _| y));
-const CHURCH_TRUE: F = F::zst(|x, _| F::new(|_, x| x.clone(), x));
-const CHURCH_BOOL: F = F::zst(axiom_bool_final);
+const CHURCH_TRUE:  F = F::zst(|x, _| F::new(|_, x| x.clone(), x));
+const CHURCH_BOOL:  F = F::zst(axiom_bool_final);
+
+const VOID_TY: F = F::zst(axiom_void_ty_final);
 
 /* Next few functions are separate because we need to reference their address */
+
+fn axiom_fun_start(arg: F, _: usize) -> F {
+    F::new(axiom_fun_middle, arg)
+}
+
+fn axiom_fun_middle(ret: F, arg: &F) -> F {
+    F::new(axiom_fun_final, (arg.clone(), ret))
+}
 
 fn axiom_fun_final(input: F, data: &(F, F)) -> F {
     static mut CURRENT_MARK: usize = 0;
 
-    let Some((in2, out2)) = input.get_fun_arg_ty_and_ret_ty_gen_if_possible() else {
-        // If it is not a `fun Arg Ret` then it can be either an axiom or a not-a-function
-        todo!("called `fun` on an axiom or a not-a-function")
-        //return CHURCH_FALSE
-    };
+    let Some((in2, out2)) = input.get_fun_arg_ty_and_ret_ty_gen_if_possible() else { return CHURCH_FALSE };
     let (r#in, out) = data;
     let arg_ok = in2.call(r#in.clone());
 
@@ -168,13 +176,17 @@ fn axiom_any_final(_: F, _: usize) -> F {
     CHURCH_TRUE
 }
 
-/// Type `Ty` is defined recursively -- `Ty = fun any bool`(`bool` needs `Ty`),
+fn axiom_void_ty_final(_: F, _: usize) -> F {
+    CHURCH_FALSE
+}
+
+/// Type `Ty` is defined recursively -- `Ty = fun Ty bool`,
 ///     that's why there are all these ceremonies around it
 fn axiom_ty_final(f: F, _: usize) -> F {
     if f.is_axiom_of_type_ty() {
         CHURCH_TRUE
     } else {
-        AXIOM_FUN.call(AXIOM_ANY).call(CHURCH_BOOL).call(f)
+        AXIOM_FUN.call(AXIOM_TY).call(CHURCH_BOOL).call(f)
     }
 }
 
@@ -184,8 +196,10 @@ fn axiom_ty_final(f: F, _: usize) -> F {
 ///     and if that's the case, then we got either `true` or `false`
 ///     -- both of which are `bool`.
 fn axiom_bool_final(f: F, _: usize) -> F {
-    const MARK1: F = F::mark(usize::MAX);
-    const MARK2: F = F::mark(usize::MAX - 1);
+    // Cannot start with `usize::MAX` because that may trigger `F` to think it is
+    //     not a mark but a generator
+    const MARK1: F = F::mark(usize::MAX - 1);
+    const MARK2: F = F::mark(usize::MAX - 2);
     let returned = f.call(MARK1).call(MARK2);
     let p = MARK1.call(returned.clone());
     return p.call(p.clone()).call(MARK2.call(returned.clone()))
@@ -194,13 +208,17 @@ fn axiom_bool_final(f: F, _: usize) -> F {
 /// This is not a type and we do not need address of this function,
 ///     but it's separated for consistency
 fn axiom_ret_ty_final(of: F, _: usize) -> F {
-    let (_, out) = of.get_fun_arg_ty_and_ret_ty_gen_if_possible().expect("called `AXIOM_RET_TY` on not-a-function");
+    let Some((_, out)) = of.get_fun_arg_ty_and_ret_ty_gen_if_possible() else { return VOID_TY };
     return out
 }
 
 fn axiom_arg_ty_final(of: F, _: usize) -> F {
-    let (r#in, _) = of.get_fun_arg_ty_and_ret_ty_gen_if_possible().expect("called `AXIOM_ARG_TY` on not-a-function");
+    let Some((r#in, _)) = of.get_fun_arg_ty_and_ret_ty_gen_if_possible() else { return VOID_TY };
     return r#in
+}
+
+fn fun_full_ty() -> F {
+    AXIOM_FUN.call(AXIOM_TY).call(F::zst(|_, _| AXIOM_FUN.call(AXIOM_FUN.call(AXIOM_TY).call(F::zst(|_, _| AXIOM_TY))).call(F::zst(|_, _| AXIOM_TY))))
 }
 
 type TypeErased = *const ();
@@ -234,11 +252,16 @@ impl F {
     }
 
     fn is_axiom_of_type_ty(&self) -> bool {
+        if self.is_gen() {
+            return self.evaluate_gen().is_axiom_of_type_ty()
+        }
         let p = self.ptr as usize;
-        return p == axiom_fun_final as *const () as usize
-        || p == axiom_any_final as *const () as usize
+        return p == axiom_any_final as *const () as usize
         || p == axiom_ty_final as *const () as usize
         || p == axiom_bool_final as *const () as usize
+        || p == axiom_void_ty_final as *const () as usize
+        // || p == axiom_fun_final as *const () as usize
+        // Not included because it can lead to situations where e.g. `(typeof f) f` == true
     }
 
     fn get_fun_arg_ty_and_ret_ty_gen_if_possible(&self) -> Option <(F, F)> {
@@ -246,12 +269,19 @@ impl F {
             return self.evaluate_gen().get_fun_arg_ty_and_ret_ty_gen_if_possible()
         }
 
-        if self.ptr as usize != axiom_fun_final as *const () as usize {
-            // Not a `fun Arg Ret` expression
-            return None
+        let p = self.ptr as usize;
+        if p == axiom_fun_final as *const () as usize {
+            let data = unsafe { &*(self.actual_data() as *const (F, F)) };
+            return Some((data.0.clone(), data.1.clone()))
+        } else if p == axiom_fun_start as *const () as usize {
+            return fun_full_ty().get_fun_arg_ty_and_ret_ty_gen_if_possible()
+        } else if self.is_axiom_of_type_ty() {
+            return Some((AXIOM_TY, CHURCH_BOOL))
+        } else if p == axiom_fun_middle as *const () as usize {
+            return Some((AXIOM_FUN.call(AXIOM_TY).call(F::zst(|_, _| AXIOM_TY)), F::zst(|_, _| AXIOM_TY)))
         }
-        let data = unsafe { &*(self.actual_data() as *const (F, F)) };
-        Some((data.0.clone(), data.1.clone()))
+
+        None
     }
 
     #[inline]

@@ -16,6 +16,8 @@ def parse_file(filename: str):
     return info.top_level
 
 
+# TODO: Rename `fun` to `fn`
+# TODO: Use `subprocess` instead of `system`
 def main(code_file: str):
     code_file = realpath(code_file)
     parsed = parse_file(code_file)
@@ -26,7 +28,10 @@ fn main() {
     f_main.call(F::zst(|x, _| {
         unsafe { COUNTER += 1 }
         x
-    })).call(f_main).call(f_main);
+    })).call(F::zst(|x, _| {
+        unsafe { COUNTER += 100 }
+        x
+    })).call(f_main);
     unsafe { println!("{COUNTER}") }
     
 }

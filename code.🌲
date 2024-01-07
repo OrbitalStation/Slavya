@@ -1,8 +1,12 @@
 any = axiom["A"]
+fun = axiom["F"]
+Ty  = axiom["T"]
 
 id = x: any -> x
 
 true  = x: any -> y: any -> x
 false = x: any -> y: any -> y
 
-main = id id id true
+idTy = fun any (x: Ty -> x)
+
+main = idTy idTy
