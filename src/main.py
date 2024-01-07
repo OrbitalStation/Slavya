@@ -1,7 +1,6 @@
 from src.parse import chop
 from os.path import realpath
 from src.codegen.compile import ccompile
-from src.codegen.typecheck import typecheck
 
 
 def read_file(filename: str):
@@ -16,8 +15,6 @@ def parse_file(filename: str):
     return info.top_level
 
 
-# TODO: Rename `fun` to `fn`
-# TODO: Use `subprocess` instead of `system`
 def main(code_file: str):
     code_file = realpath(code_file)
     parsed = parse_file(code_file)

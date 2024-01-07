@@ -3,7 +3,6 @@ from os import system
 from src import utils
 
 
-# TODO: Switch to `cargo`
 def compile_and_run(text: str, mod_name: str = "main"):
     open(f"./compiled/src/{mod_name}.rs", "wt").write(text)
     system(f"cd compiled && cargo run -r -q")
