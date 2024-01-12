@@ -1,6 +1,8 @@
+from typing import Callable
 import src.data_types as dt
 from os import system
 from src import utils
+from copy import copy
 
 
 def compile_and_run(text: str, mod_name: str = "main"):
@@ -80,3 +82,23 @@ def get_used_statements(expr: dt.Expr, stmts) -> set[int]:
             return set()
         case dt.Statement:
             return {utils.find(lambda s: isinstance(s, Typed) and s.data.name == expr.name, stmts)}
+
+
+def visit_expr(
+        root: dt.Expr,
+        node_filter: Callable[[dt.Expr], bool],
+        node_transformer: Callable[[dt.Expr], dt.Expr]
+) -> dt.Expr:
+    to_check = []
+    match type(root):
+        case dt.Abstraction:
+            to_check.append(("body", root.body))
+        case dt.Application:
+            to_check.extend([("function", root.function), ("argument", root.argument)])
+
+    cp = copy(root)
+    for attr, node in to_check:
+        setattr(cp, attr, visit_expr(node, node_filter, node_transformer))
+    if node_filter(cp):
+        cp = node_transformer(cp)
+    return cp

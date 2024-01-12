@@ -1,12 +1,5 @@
-any = axiom["A"]
-fun = axiom["F"]
-Ty  = axiom["T"]
+succ = n -> f -> x -> f (n f x)
 
-id = x: any -> x
+0 = f -> x -> x
 
-true  = x: any -> y: any -> x
-false = x: any -> y: any -> y
-
-idTy = fun any (x: Ty -> x)
-
-main = idTy idTy
+main = succ (succ (succ 0))
