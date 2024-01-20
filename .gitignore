@@ -17,4 +17,4 @@ compiled/src/main.rs
 exampleCode.🌲
 
 # Temporarily disabled with `git rm`
-src/codegen/typecheck.py
+src/codegen/old_typecheck.py

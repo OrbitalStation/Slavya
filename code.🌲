@@ -1,5 +1,7 @@
-succ = n -> f -> x -> f (n f x)
+any = axiom["A"]
+fun = axiom["F"]
+Ty  = axiom["T"]
 
-0 = f -> x -> x
+id = x: any -> x
 
-main = succ (succ (succ 0))
+main = id

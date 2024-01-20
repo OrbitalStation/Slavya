@@ -3,35 +3,39 @@ from src.codegen import analysis
 from src import utils
 
 
-def optimize(stmt: dt.Statement, stmts: list[dt.TopLevel]) -> dt.Statement:
-    name, body = stmt.name, stmt.body
-
-    body = _statement_replacing_pass(body, stmts)
-    body = _beta_reduction_pass(body)
-
-    return dt.Statement(name, body)
+def stmt(s: dt.TypedTopLevel, top_level: list[dt.TypedTopLevel]) -> dt.TypedTopLevel:
+    name, body = s.data.name, s.data.body
+    body = expr(body, top_level)
+    return dt.Typed(dt.Statement(name, body), s.ty)
 
 
-def _statement_replacing_pass(body: dt.Expr, stmts: list[dt.TopLevel]) -> dt.Expr:
-    def transform(expr: dt.Statement) -> dt.Statement:
-        return stmts[utils.find(lambda s: isinstance(s, dt.Statement) and s.name == expr.name, stmts)]
-    return analysis.visit_expr(body, lambda e: isinstance(e, dt.Statement), transform)
+def expr(e: dt.Expr, top_level: list[dt.TypedTopLevel]) -> dt.Expr:
+    e = _statement_replacing_pass(e, top_level)
+    e = _beta_reduction_and_axiom_expanding_pass(e)
+    return e
 
 
-def _beta_reduction_pass(body: dt.Expr) -> dt.Expr:
-    def transform(expr: dt.Application):
-        function = expr.function
-        while isinstance(function, dt.Statement):
-            function = function.body
+def _statement_replacing_pass(ee: dt.Expr, top_level: list[dt.TopLevel]) -> dt.Statement:
+    def transform(e: dt.Typed[dt.Statement]) -> dt.Statement:
+        return top_level[utils.find(lambda s: isinstance(s, dt.Typed) and s.data.name == e.data.name, top_level)]
+    return analysis.visit_expr(ee, lambda e: isinstance(e, dt.Typed), transform)
+
+
+def _beta_reduction_and_axiom_expanding_pass(body: dt.Expr) -> dt.Expr:
+    def transform(e: dt.Application):
+        function = e.function
+        while isinstance(function, dt.Typed):
+            function = function.data.body
         if isinstance(function, dt.Abstraction):
             reduced = analysis.visit_expr(
                 function.body,
-                lambda e: isinstance(e, dt.Argument) and e.name == function.argument.name,
-                lambda _: expr.argument
+                lambda ee: isinstance(ee, dt.Argument) and ee.name == function.argument.name,
+                lambda _: e.argument
             )
             # Repeat beta-reduction because replacement may have generated new possible reduction candidates
-            return _beta_reduction_pass(reduced)
-        return expr
+            return _beta_reduction_and_axiom_expanding_pass(reduced)
+        # TODO: add axiom expanding
+        return e
     return analysis.visit_expr(body, lambda e: isinstance(e, dt.Application), transform)
 
 # TODO: maybe implement eta-reduction

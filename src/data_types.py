@@ -3,11 +3,12 @@ from enum import IntEnum
 from dataclasses import dataclass
 
 
-__all__ = ["Expr", "Argument", "Abstraction", "Application", "Axiom", "AXIOMS", "Statement", "Comment", "TopLevel"]
+__all__ = ["Expr", "Argument", "Abstraction", "Application", "Axiom", "AXIOMS", "Statement", "Comment", "TopLevel",
+           "TypedTopLevel"]
 
 
 # Stub; should really be `Expr`
-_Expr = Any
+type _Expr = Any
 
 
 @dataclass
@@ -32,12 +33,7 @@ class Axiom(IntEnum):
     ANY    = 0
     FUN    = 1
     TY     = 2
-
-    # The following axioms cannot be obtained via `axiom["..."]`,
-    #   but in difference to CHURCH_BOOL, CHURCH_TRUE, etc.
-    #   that are present only in `heart.rs` we need to reference them
-    #   in python code also, so that's why they are in here
-    RET_TY = 3
+    BOOL   = 3
 
 
 AXIOMS = {
@@ -58,6 +54,15 @@ class Comment:
     source: str
 
 
-Expr = Argument | Abstraction | Application | Axiom | Statement
+type Expr = Argument | Abstraction | Application | Axiom | Statement
 
 type TopLevel = Statement | Comment
+
+
+@dataclass
+class Typed[T]:
+    data: T
+    ty: Expr
+
+
+type TypedTopLevel = Typed[Statement] | Comment

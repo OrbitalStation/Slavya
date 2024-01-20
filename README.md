@@ -30,7 +30,7 @@ The following program defines "zero" and a way to increment it
 
 NOTE: it will not run right now, because I'm in process of introducing types to the language.
 ```
-* code.slavya
+* code.🌲
 * ^^^^^^^^^^^ A comment btw
 * It starts with an asterisk(`*`) and goes till the end of line
 0 = f -> x -> x

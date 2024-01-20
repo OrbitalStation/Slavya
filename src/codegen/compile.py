@@ -3,7 +3,7 @@ from src import utils
 import src.data_types as dt
 
 
-def ccompile(top_level_list: list[dt.TopLevel], extra_code: str, filename: str = "main"):
+def ccompile(top_level_list: list[dt.TypedTopLevel], extra_code: str, filename: str = "main"):
     """
     Compile Slavya data structures to Rust
     """
@@ -12,17 +12,18 @@ def ccompile(top_level_list: list[dt.TopLevel], extra_code: str, filename: str =
     analysis.compile_and_run(file_rs, filename)
 
 
-def ttop_level(top_level: dt.TopLevel) -> str:
+def ttop_level(top_level: dt.TypedTopLevel) -> str:
     if isinstance(top_level, dt.Comment):
         return f"/* {top_level.source} */"
-    body = eexpr(top_level.body, ())
+
+    body = eexpr(top_level.data.body, ())
     # Cannot make calling const in Rust
-    if isinstance(top_level.body, dt.Application):
+    if isinstance(top_level.data.body, dt.Application):
         body = f"F::gen(|| {body})"
-    return f"const {analysis.modify_static(top_level.name)}: F = {body};"
+    return f"const {analysis.modify_static(top_level.data.name)}: F = {body};"
 
 
-def eexpr(expr: dt.Expr, arguments: tuple[analysis.ModifiedName, ...], no_clone_required: bool = False) -> str:
+def eexpr(expr: dt.Expr | dt.Typed, arguments: tuple[analysis.ModifiedName, ...], no_clone_required: bool = False) -> str:
     match type(expr):
         case dt.Argument:
             modified = analysis.modify_arg(expr.name)
@@ -33,7 +34,7 @@ def eexpr(expr: dt.Expr, arguments: tuple[analysis.ModifiedName, ...], no_clone_
                 return modified + clone
             return f"data.{idx}" + clone
         case dt.Abstraction:
-            # `set`s do not preserve order, which will crucial later, so convert to tuple
+            # `set`s do not preserve order, which will be crucial later, so convert to tuple
             bound = tuple(analysis.get_bound_arguments(expr.body, arguments))
             arg_name = analysis.modify_arg(expr.argument.name)
             body = eexpr(expr.body, bound + (arg_name,))
@@ -47,7 +48,7 @@ def eexpr(expr: dt.Expr, arguments: tuple[analysis.ModifiedName, ...], no_clone_
         case dt.Application:
             return f"{eexpr(expr.function, arguments, no_clone_required=True)}.call({eexpr(expr.argument, arguments)})"
         case dt.Axiom:
-            return f"AXIOM_{expr.name}"
+            raise ValueError("axioms should not have leaked into Rust code")
         case dt.Statement:
             return analysis.modify_static(expr.name)
 

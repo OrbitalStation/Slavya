@@ -1,7 +1,6 @@
 from src.parse import chop
 from os.path import realpath
-from src.codegen.compile import ccompile
-from src.codegen.optimize import optimize
+from src.codegen import typecheck, optimize, compile
 from src.data_types import TopLevel, Comment
 
 
@@ -17,21 +16,33 @@ def parse_file(filename: str):
     return info.top_level
 
 
-def optimise(stmts: list[TopLevel]) -> list[TopLevel]:
+def typecheck_and_optimize(top_level: list[TopLevel]):
     result = []
-    while len(stmts) > 0:
-        if isinstance(stmts[0], Comment):
-            result.append(stmts.pop(0))
+    used_stmts = set()
+    for stmt in top_level:
+        if isinstance(stmt, Comment):
+            result.append(stmt)
             continue
-        result.append(optimize(stmts.pop(0), result))
+
+        stmt, used = typecheck.stmt(stmt, result, top_level)
+        used_stmts |= used
+
+        stmt = optimize.stmt(stmt, result)
+
+        result.append(stmt)
     return result
 
 
 def main(code_file: str):
     code_file = realpath(code_file)
+
     parsed = parse_file(code_file)
-    optimized = optimise(parsed)
-    ccompile(optimized, """
+
+    t_and_o = typecheck_and_optimize(parsed)
+
+    eliminated = optimize.eliminate_dead_code(t_and_o)
+
+    compile.ccompile(eliminated, """
 static mut COUNTER: usize = 0;
 fn main() {
     f_main.call(F::zst(|x, _| {

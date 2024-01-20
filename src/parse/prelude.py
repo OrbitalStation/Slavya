@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Self, NoReturn
 from src.data_types import *
-from sys import stderr
+from src.err import error
 from src import utils
 
 
@@ -39,6 +39,4 @@ type With[T] = tuple[Optional[T], Parseable]
 
 
 def err(info: Info, p: Parseable, description: str) -> NoReturn:
-    location = f"At {info.file}:{info.line}:{p.column}"
-    print(location + "\n\t" + p.full_string + "\n" + description, file=stderr)
-    exit(1)
+    error(info.file, info.line, p.column, p.full_string, description)

@@ -115,15 +115,14 @@ def expr(info: Info, p: Parseable, abstractions_arguments: tuple[Argument, ...])
 def abstraction(info: Info, p: Parseable, abstractions_arguments: tuple[Argument, ...]) -> With[Abstraction]:
     seq, p2 = sequence(info, p, [
         utils.ignore1(identifier),
-        # utils.ignore1(utils.rpartial(token, ":")),
-        # utils.rpartial(expr, abstractions_arguments),
+        utils.ignore1(utils.rpartial(token, ":")),
+        utils.rpartial(expr, abstractions_arguments),
         utils.ignore1(utils.rpartial(token, "->"))
     ])
     if isinstance(seq, int):
         return None, p
-    # argument, _, ty, _ = seq
-    argument, _ = seq
-    argument = Argument(argument, None)
+    argument, _, ty, _ = seq
+    argument = Argument(argument, ty)
     if utils.is_none1(xxx := expr(info, p2, abstractions_arguments + (argument,))):
         err(info, p2, "Expected a body after `->`")
     body, p3 = xxx

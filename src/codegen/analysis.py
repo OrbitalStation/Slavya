@@ -34,6 +34,9 @@ class ModifiedName:
     def __str__(self):
         return self.value
 
+    def __repr__(self):
+        return repr(self.value)
+
     def __eq__(self, other):
         return str(self) == str(other)
 
@@ -68,27 +71,28 @@ def get_bound_arguments(expr: dt.Expr, arguments: tuple[ModifiedName, ...]) -> s
             return set()
 
 
-def get_used_statements(expr: dt.Expr, stmts) -> set[int]:
-    from src.codegen.typecheck import Typed
-
+def get_used_statements(expr: dt.Expr, stmts: list[dt.TopLevel], is_final: bool = False) -> set[int]:
     match type(expr):
         case dt.Argument:
-            return get_used_statements(expr.ty, stmts)
+            return set()
         case dt.Abstraction:
-            return get_used_statements(expr.argument.ty, stmts) | get_used_statements(expr.body, stmts)
+            arg = set() if is_final else get_used_statements(expr.argument.ty, stmts)
+            return arg | get_used_statements(expr.body, stmts)
         case dt.Application:
             return get_used_statements(expr.function, stmts) | get_used_statements(expr.argument, stmts)
         case dt.Axiom:
             return set()
         case dt.Statement:
-            return {utils.find(lambda s: isinstance(s, Typed) and s.data.name == expr.name, stmts)}
+            if is_final:
+                return {utils.find(lambda s: isinstance(s, dt.Typed) and s.data.name == expr.name, stmts)}
+            return {utils.find(lambda s: isinstance(s, dt.Statement) and s.name == expr.name, stmts)}
 
 
 def visit_expr(
-        root: dt.Expr,
-        node_filter: Callable[[dt.Expr], bool],
-        node_transformer: Callable[[dt.Expr], dt.Expr]
-) -> dt.Expr:
+        root: dt.Expr | dt.Typed[dt.Statement],
+        node_filter: Callable[[dt.Expr | dt.Typed[dt.Statement]], bool],
+        node_transformer: Callable[[dt.Expr | dt.Typed[dt.Statement]], dt.Expr | dt.Typed[dt.Statement]]
+) -> dt.Expr | dt.Typed[dt.Statement]:
     to_check = []
     match type(root):
         case dt.Abstraction:
